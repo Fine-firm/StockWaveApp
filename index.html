@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockWave Inventory</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #007bff;
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            margin: 0;
+        }
+        nav a, nav button {
+            color: #fff;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-weight: 500;
+            transition: color 0.2s ease-in-out;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        nav a:hover, nav button:hover {
+            color: #cce5ff;
+        }
+        main {
+            padding: 2rem;
+        }
+        section {
+            display: none;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+        section.active {
+            display: block;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #6c757d;
+            font-size: 1rem;
+        }
+        .card p {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #007bff;
+            margin: 0.5rem 0 0;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 500px;
+            margin-top: 1.5rem;
+        }
+        label {
+            font-weight: 500;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], input[type="password"], select, textarea {
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f0f3f6;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25em 0.75em;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .status-correct { background-color: #28a745; color: white; }
+        .status-less { background-color: #ffc107; color: #333; }
+        .status-excess { background-color: #dc3545; color: white; }
+        
+        /* New styles for Item Master layout */
+        .item-master-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        .form-section {
+            border: 1px solid #ddd;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .form-section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        .bulk-import-container textarea {
+            width: 100%;
+            min-height: 150px;
+            resize: vertical;
+        }
+        .bulk-actions-buttons button {
+            background-color: #dc3545;
+        }
+        .bulk-actions-buttons button:hover {
+            background-color: #c82333;
+        }
+        #stock-count .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        #stock-count .export-button {
+            background-color: #17a2b8;
+        }
+        #stock-count .export-button:hover {
+            background-color: #138496;
+        }
+        .editable {
+            cursor: pointer;
+        }
+        
+        /* Virtualized list styles */
+        #item-list-container {
+            max-height: 60vh; /* Adjust as needed */
+            overflow-y: auto;
+            position: relative;
+        }
+        #item-list-table {
+            width: 100%;
+            table-layout: fixed;
+        }
+        #item-list-table thead {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 10;
+        }
+        .item-row {
+            height: 40px; /* Adjust to match the row height */
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .modal-body .form-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-body label {
+            flex: 1;
+            font-weight: 600;
+        }
+        .modal-body input {
+            flex: 2;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .modal-footer {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        .modal-footer button {
+            padding: 0.75rem 1.5rem;
+        }
+        .delete-button {
+            background-color: #dc3545;
+        }
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>StockWave</h1>
+        <nav id="nav-menu">
+            </nav>
+    </header>
+    
+    <main>
+        <section id="login">
+            <h2>Login</h2>
+            <form id="login-form">
+                <label for="login-username">Username:</label>
+                <input type="text" id="login-username" required>
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" required>
+                <button type="submit">Login</button>
+            </form>
+            <p id="login-message"></p>
+        </section>
+
+        <section id="signup">
+            <h2>Signup</h2>
+            <form id="signup-form">
+                <label for="signup-username">Username:</label>
+                <input type="text" id="signup-username" required>
+                <label for="signup-password">Password:</label>
+                <input type="password" id="signup-password" required>
+                <button type="submit">Signup</button>
+            </form>
+            <p id="signup-message"></p>
+        </section>
+
+        <section id="dashboard">
+            <h2>Dashboard</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Total Items</h3>
+                    <p id="total-items">0</p>
+                </div>
+                <div class="card">
+                    <h3>Unique Products</h3>
+                    <p id="unique-products">0</p>
+                </div>
+                <div class="card">
+                    <h3>Correct Count</h3>
+                    <p id="correct-count">0</p>
+                </div>
+                <div class="card">
+                    <h3>Less Count</h3>
+                    <p id="less-count">0</p>
+                </div>
+                <div class="card">
+                    <h3>Excess Count</h3>
+                    <p id="excess-count">0</p>
+                </div>
+                <div class="card">
+                    <h3>Overall Accuracy</h3>
+                    <p id="accuracy-percentage">0%</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="stock-taking-form">
+            <h2>Stock Take Form</h2>
+            <form id="stock-take-form-el">
+                <label for="stock-user-name">User Name:</label>
+                <select id="stock-user-name" required>
+                    </select>
+
+                <label for="stock-location">Location:</label>
+                <select id="stock-location" required>
+                    </select>
+
+                <label for="stock-category">Category:</label>
+                <input type="text" id="stock-category" placeholder="e.g., Water, Chocolates">
+
+                <label for="stock-barcode">Barcode:</label>
+                <input type="text" id="stock-barcode">
+        
+                <label for="stock-item-code">Item Code:</label>
+                <input type="text" id="stock-item-code">
+        
+                <label for="stock-item-name">Item Name:</label>
+                <input type="text" id="stock-item-name">
+        
+                <label for="stock-counted-quantity">Counted Quantity:</label>
+                <input type="number" id="stock-counted-quantity" required>
+        
+                <button type="submit">Submit Count</button>
+            </form>
+            <p id="stock-take-message"></p>
+        </section>
+
+        <section id="stock-count">
+            <div class="header-row">
+                <h2>Stock Count</h2>
+                <div>
+                    <button id="save-changes-button" style="display: none;">Save Changes</button>
+                    <button id="undo-button" style="display: none; background-color: gray;">UNDO</button>
+                    <button id="export-excel-button" class="export-button">Export to Excel</button>
+                    <button id="delete-all-counts-button" class="delete-button">Delete Count</button>
+                </div>
+            </div>
+            <table id="stock-count-table">
+                <thead>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="item-list">
+            <div class="header-row">
+                <h2>Item List</h2>
+                <input type="text" id="item-list-search" placeholder="Search items...">
+            </div>
+            <div id="item-list-container">
+                <table id="item-list-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>ITEM CODE</th>
+                            <th>BARCODE</th>
+                            <th>ITEM NAME</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="item-master">
+            <h2>Item Master Management</h2>
+            <div class="item-master-grid">
+                <div class="form-section">
+                    <h3>Add/Edit Item</h3>
+                    <form id="add-edit-item-form">
+                        <label for="master-item-code">Item Code:</label>
+                        <input type="text" id="master-item-code" required>
+                        <label for="master-barcode">Barcode:</label>
+                        <input type="text" id="master-barcode">
+                        <label for="master-item-name">Item Name:</label>
+                        <input type="text" id="master-item-name" required>
+                        <button type="submit">Save Item</button>
+                    </form>
+                </div>
+                <div class="form-section bulk-import-container">
+                    <h3>Bulk Import (Excel/CSV)</h3>
+                    <p>Copy and paste data directly from your spreadsheet. The columns should be in the order: <b>Item Code</b>, <b>Barcode</b>, <b>Item Name</b>.</p>
+                    <textarea id="bulk-import-data" placeholder="Paste your data here..."></textarea>
+                    <p id="import-status-message" style="margin-top: 1rem;"></p>
+                    <button id="import-button" class="import-button">Import Items</button>
+                </div>
+            </div>
+            <div class="bulk-actions-buttons">
+                <h3>Bulk Actions</h3>
+                <button id="delete-selected-button">Delete Selected</button>
+                <button id="delete-all-button">Delete All</button>
+            </div>
+            <table id="master-list-table">
+                <thead>
+                    <tr>
+                        <th>Item Code</th>
+                        <th>Name</th>
+                        <th>Expected Qty</th>
+                        <th>Barcode</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="location-master">
+            <h2>Location Master</h2>
+            <form id="location-form">
+                <label for="location-name">Location Name:</label>
+                <input type="text" id="location-name" required>
+                <button type="submit">Add Location</button>
+            </form>
+            <table id="location-list-table">
+                <thead>
+                    <tr>
+                        <th>Location Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="user-management">
+            <h2>User Management</h2>
+            <form id="user-form">
+                <label for="username">Username:</label>
+                <input type="text" id="username" required>
+                <label for="role">Role:</label>
+                <select id="role">
+                    <option value="Admin">Admin</option>
+                    <option value="Staff">Staff</option>
+                </select>
+                <button type="submit">Add User</button>
+            </form>
+            <table id="user-list-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 id="modal-item-name"></h2>
+            <div id="modal-body" class="modal-body">
+                </div>
+            <div class="modal-footer">
+                <button id="save-modal-button">Save Changes</button>
+                <button id="cancel-modal-button" style="background-color: gray;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const sections = document.querySelectorAll('section');
+        const navMenu = document.getElementById('nav-menu');
+        const addEditForm = document.getElementById('add-edit-item-form');
+        const stockTakeForm = document.getElementById('stock-take-form-el');
+        const userForm = document.getElementById('user-form');
+        const locationForm = document.getElementById('location-form');
+        const masterTableBody = document.querySelector('#master-list-table tbody');
+        const itemListTableBody = document.querySelector('#item-list-table tbody');
+        const userTableBody = document.querySelector('#user-list-table tbody');
+        const locationTableBody = document.querySelector('#location-list-table tbody');
+        const stockCountTableHead = document.querySelector('#stock-count-table thead');
+        const stockCountTableBody = document.querySelector('#stock-count-table tbody');
+        const stockBarcodeInput = document.getElementById('stock-barcode');
+        const stockItemCodeInput = document.getElementById('stock-item-code');
+        const stockItemNameInput = document.getElementById('stock-item-name');
+        const stockCategoryInput = document.getElementById('stock-category');
+        const stockCountedQuantityInput = document.getElementById('stock-counted-quantity');
+        const stockUserDropdown = document.getElementById('stock-user-name');
+        const stockLocationDropdown = document.getElementById('stock-location');
+        const importButton = document.getElementById('import-button');
+        const importStatusMessage = document.getElementById('import-status-message');
+        const exportExcelButton = document.getElementById('export-excel-button');
+        const bulkImportData = document.getElementById('bulk-import-data');
+        const deleteAllButton = document.getElementById('delete-all-button');
+        const saveChangesButton = document.getElementById('save-changes-button');
+        const undoButton = document.getElementById('undo-button');
+        const itemListSearchInput = document.getElementById('item-list-search');
+        const itemListContainer = document.getElementById('item-list-container');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const loginMessage = document.getElementById('login-message');
+        const signupMessage = document.getElementById('signup-message');
+        const editModal = document.getElementById('editModal');
+        const closeModalButton = document.querySelector('.close-button');
+        const saveModalButton = document.getElementById('save-modal-button');
+        const cancelModalButton = document.getElementById('cancel-modal-button');
+        const modalBody = document.getElementById('modal-body');
+        const modalItemName = document.getElementById('modal-item-name');
+        const deleteAllCountsButton = document.getElementById('delete-all-counts-button');
+
+        const API_URL = 'http://localhost/stockwave_backend/api.php';
+
+        let selectedItemCode = null;
+        let itemMaster = [];
+        let inventoryAudit = [];
+        let originalInventoryAudit = [];
+        let users = [];
+        let locationMaster = [];
+        let filteredItems = [];
+        let currentUser = null;
+        const ROW_HEIGHT = 40;
+        let currentModalData = [];
+
+        // Fetch data from the backend
+        async function fetchData(endpoint) {
+            const response = await fetch(`${API_URL}/${endpoint}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${endpoint}: ${response.statusText}`);
+            }
+            return response.json();
+        }
+
+        // Post data to the backend
+        async function postData(endpoint, data) {
+            const response = await fetch(`${API_URL}/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to post to ${endpoint}: ${response.statusText}`);
+            }
+            return response.json();
+        }
+
+        // Update data on the backend
+        async function updateData(endpoint, data) {
+            const response = await fetch(`${API_URL}/${endpoint}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to update ${endpoint}: ${response.statusText}`);
+            }
+            return response.json();
+        }
+
+        // Delete data from the backend
+        async function deleteData(endpoint, id) {
+            const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to delete from ${endpoint}: ${response.statusText}`);
+            }
+            return response.json();
+        }
+
+        async function deleteDataAll(endpoint) {
+            const response = await fetch(`${API_URL}/${endpoint}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to delete all from ${endpoint}: ${response.statusText}`);
+            }
+            return response.json();
+        }
+
+        // Hashing function using Web Crypto API
+        async function hashPassword(password) {
+            const textEncoder = new TextEncoder();
+            const data = textEncoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        async function login(username, password) {
+            try {
+                users = await fetchData('users');
+                const user = users.find(u => u.username === username);
+                if (!user) return false;
+
+                const hashedPassword = await hashPassword(password);
+                return user.password_hash === hashedPassword;
+            } catch (error) {
+                console.error("Login failed:", error);
+                return false;
+            }
+        }
+
+        function renderNav() {
+            navMenu.innerHTML = '';
+            if (currentUser) {
+                const navItems = [
+                    { name: 'Dashboard', id: 'dashboard' },
+                    { name: 'Stock Take', id: 'stock-taking-form' },
+                    { name: 'Stock Count', id: 'stock-count' },
+                    { name: 'Item List', id: 'item-list' },
+                    { name: 'Item Master', id: 'item-master' },
+                    { name: 'Location Master', id: 'location-master' },
+                    { name: 'User Management', id: 'user-management' }
+                ];
+                navItems.forEach(item => {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = item.name;
+                    link.dataset.section = item.id;
+                    navMenu.appendChild(link);
+                });
+                const logoutButton = document.createElement('button');
+                logoutButton.textContent = 'Logout';
+                logoutButton.addEventListener('click', () => {
+                    currentUser = null;
+                    localStorage.removeItem('currentUser');
+                    renderNav();
+                    navigate('login');
+                });
+                navMenu.appendChild(logoutButton);
+            } else {
+                const loginLink = document.createElement('a');
+                loginLink.href = '#';
+                loginLink.textContent = 'Login';
+                loginLink.dataset.section = 'login';
+                navMenu.appendChild(loginLink);
+                const signupLink = document.createElement('a');
+                signupLink.href = '#';
+                signupLink.textContent = 'Signup';
+                signupLink.dataset.section = 'signup';
+                navMenu.appendChild(signupLink);
+            }
+        }
+
+        async function navigate(targetId) {
+            sections.forEach(sec => sec.classList.remove('active'));
+            document.getElementById(targetId).classList.add('active');
+
+            if (currentUser) {
+                try {
+                    switch (targetId) {
+                        case 'dashboard':
+                            inventoryAudit = await fetchData('audit');
+                            renderDashboard();
+                            break;
+                        case 'item-list':
+                            itemMaster = await fetchData('items');
+                            filteredItems = [...itemMaster];
+                            renderItemList();
+                            break;
+                        case 'item-master':
+                            itemMaster = await fetchData('items');
+                            renderMasterList();
+                            break;
+                        case 'location-master':
+                            locationMaster = await fetchData('locations');
+                            renderLocationList();
+                            break;
+                        case 'user-management':
+                            users = await fetchData('users');
+                            renderUserList();
+                            break;
+                        case 'stock-taking-form':
+                            users = await fetchData('users');
+                            locationMaster = await fetchData('locations');
+                            renderUserDropdown();
+                            renderLocationDropdown();
+                            break;
+                        case 'stock-count':
+                            inventoryAudit = await fetchData('audit');
+                            renderStockCount();
+                            break;
+                    }
+                } catch (error) {
+                    console.error("Error navigating to section:", error);
+                    alert("Could not load data. Please check if the backend server is running.");
+                }
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('nav a')) {
+                e.preventDefault();
+                navigate(e.target.getAttribute('data-section'));
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (await login(username, password)) {
+                currentUser = users.find(u => u.username === username);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                loginMessage.textContent = '';
+                loginForm.reset();
+                renderNav();
+                navigate('dashboard');
+            } else {
+                loginMessage.textContent = 'Invalid username or password.';
+            }
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('signup-username').value.trim();
+            const password = document.getElementById('signup-password').value;
+            try {
+                users = await fetchData('users');
+                if (users.find(u => u.username === username)) {
+                    signupMessage.textContent = 'Username already exists!';
+                    return;
+                }
+                const password_hash = await hashPassword(password);
+                const newUser = { username, role: 'Staff', password_hash };
+                await postData('users', newUser);
+                signupMessage.textContent = 'Signup successful! You can now log in.';
+                signupForm.reset();
+            } catch (error) {
+                signupMessage.textContent = 'Signup failed. Please try again.';
+                console.error('Signup error:', error);
+            }
+        });
+
+        addEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const item_code = document.getElementById('master-item-code').value.trim();
+            const item_name = document.getElementById('master-item-name').value.trim();
+            const barcode = document.getElementById('master-barcode').value.trim();
+            try {
+                const existingItem = itemMaster.find(item => item.item_code === item_code);
+                if (existingItem) {
+                    await updateData('items/' + encodeURIComponent(item_code), {
+                        item_name,
+                        barcode,
+                        expected: existingItem.expected
+                    });
+                } else {
+                    await postData('items', { item_code, item_name, barcode, expected: 0 });
+                }
+                addEditForm.reset();
+                navigate('item-master');
+            } catch (error) {
+                console.error("Failed to save item:", error);
+                alert("Failed to save item. Please try again.");
+            }
+        });
+
+        importButton.addEventListener('click', async () => {
+            const data = bulkImportData.value.trim();
+            if (data === '') {
+                alert('Please paste data to import.');
+                return;
+            }
+            importStatusMessage.textContent = 'Importing... Do not close the window.';
+            importButton.disabled = true;
+            const rows = data.split('\n');
+            const newItems = [];
+            rows.forEach(row => {
+                const columns = row.split('\t');
+                if (columns.length >= 3) {
+                    newItems.push({
+                        item_code: columns[0].trim(),
+                        barcode: columns[1].trim(),
+                        item_name: columns[2].trim(),
+                        expected: 0
+                    });
+                }
+            });
+            try {
+                for (const item of newItems) {
+                    const existingItem = itemMaster.find(i => i.item_code === item.item_code);
+                    if (existingItem) {
+                        await updateData('items/' + encodeURIComponent(item.item_code), {
+                            item_name: item.item_name,
+                            barcode: item.barcode,
+                            expected: existingItem.expected
+                        });
+                    } else {
+                        await postData('items', item);
+                    }
+                }
+                bulkImportData.value = '';
+                importStatusMessage.textContent = `Import complete! ${newItems.length} items were processed.`;
+                navigate('item-master');
+            } catch (error) {
+                importStatusMessage.textContent = 'Import failed. See console for details.';
+                console.error("Bulk import failed:", error);
+            } finally {
+                importButton.disabled = false;
+            }
+        });
+
+        deleteAllButton.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to delete all items? This will also delete all inventory audit records.')) {
+                try {
+                    // Note: Need a separate backend endpoint for bulk delete of item_master and inventory_audit
+                    // For now, this is a placeholder. You'll need to add DELETE logic in your PHP for this
+                    alert('All items have been deleted.');
+                    navigate('item-master');
+                } catch (error) {
+                    console.error("Failed to delete all items:", error);
+                    alert("Failed to delete all items. Please try again.");
+                }
+            }
+        });
+
+        exportExcelButton.addEventListener('click', () => {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            const locations = [...new Set(inventoryAudit.map(item => item.location))];
+            const headers = ["USER NAME", "CATEGORY", "ITEM CODE", "BARCODE", "ITEM NAME", ...locations, "TOTAL"];
+            csvContent += headers.join(",") + "\n";
+            const consolidatedData = {};
+            inventoryAudit.forEach(item => {
+                const key = `${item.user_name}_${item.category}_${item.item_code}`;
+                if (!consolidatedData[key]) {
+                    consolidatedData[key] = {
+                        user_name: item.user_name,
+                        category: item.category,
+                        item_code: item.item_code,
+                        barcode: item.barcode,
+                        item_name: item.item_name,
+                        locations: {},
+                        total: 0
+                    };
+                }
+                consolidatedData[key].locations[item.location] = parseInt(item.actual_quantity);
+                consolidatedData[key].total += parseInt(item.actual_quantity);
+            });
+            Object.values(consolidatedData).forEach(row => {
+                const rowData = [
+                    row.user_name, row.category, row.item_code, row.barcode, row.item_name, ...locations.map(loc => row.locations[loc] || ''), row.total
+                ];
+                csvContent += rowData.join(",") + "\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "stock_count.csv");
+            document.body.appendChild(link);
+            link.click();
+        });
+
+        stockTakeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user_name = stockUserDropdown.value;
+            const location_name = stockLocationDropdown.value;
+            const category = stockCategoryInput.value.trim();
+            const barcode = stockBarcodeInput.value.trim();
+            const item_code = stockItemCodeInput.value.trim();
+            const item_name = stockItemNameInput.value.trim();
+            const actual_quantity = parseInt(stockCountedQuantityInput.value);
+            if (!user_name || !location_name || !item_code || !actual_quantity) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            const auditItem = {
+                user_name,
+                location: location_name,
+                category,
+                item_code,
+                barcode,
+                item_name,
+                actual_quantity
+            };
+            try {
+                await postData('audit', auditItem);
+                const existingMasterItem = itemMaster.find(item => item.item_code === item_code);
+                if (!existingMasterItem) {
+                    await postData('items', { item_code, item_name, barcode, expected: 0 });
+                }
+                stockTakeForm.reset();
+                selectedItemCode = null;
+                alert('Stock count submitted successfully!');
+            } catch (error) {
+                console.error("Failed to submit stock count:", error);
+                alert("Failed to submit stock count. Please try again.");
+            }
+        });
+
+        async function findItem(query) {
+            try {
+                itemMaster = await fetchData('items');
+                return itemMaster.find(item => item.item_code === query || item.item_name === query || (item.barcode && item.barcode === query));
+            } catch (error) {
+                console.error("Failed to fetch item data:", error);
+                return null;
+            }
+        }
+
+        function autofillForm(item) {
+            if (item) {
+                stockBarcodeInput.value = item.barcode || '';
+                stockItemCodeInput.value = item.item_code;
+                stockItemNameInput.value = item.item_name;
+                selectedItemCode = item.item_code;
+            }
+        }
+
+        stockBarcodeInput.addEventListener('input', async (e) => {
+            const item = await findItem(e.target.value);
+            autofillForm(item);
+        });
+        stockItemCodeInput.addEventListener('input', async (e) => {
+            const item = await findItem(e.target.value);
+            autofillForm(item);
+        });
+        stockItemNameInput.addEventListener('input', async (e) => {
+            const item = await findItem(e.target.value);
+            autofillForm(item);
+        });
+
+        userForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const role = document.getElementById('role').value;
+            try {
+                users = await fetchData('users');
+                if (users.find(u => u.username === username)) {
+                    alert('Username already exists!');
+                    return;
+                }
+                const password_hash = await hashPassword('defaultpassword'); // Or prompt for a new password
+                await postData('users', { username, role, password_hash });
+                userForm.reset();
+                navigate('user-management');
+            } catch (error) {
+                console.error("Failed to add user:", error);
+                alert("Failed to add user. Please try again.");
+            }
+        });
+
+        locationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('location-name').value.trim();
+            try {
+                locationMaster = await fetchData('locations');
+                if (locationMaster.find(loc => loc.name === name)) {
+                    alert('Location name already exists!');
+                    return;
+                }
+                await postData('locations', { name });
+                locationForm.reset();
+                navigate('location-master');
+            } catch (error) {
+                console.error("Failed to add location:", error);
+                alert("Failed to add location. Please try again.");
+            }
+        });
+
+        function renderMasterList() {
+            masterTableBody.innerHTML = '';
+            itemMaster.forEach((item, index) => {
+                const row = masterTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${item.item_code}</td>
+                    <td>${item.item_name}</td>
+                    <td>${item.expected}</td>
+                    <td>${item.barcode || ''}</td>
+                    <td><button onclick="deleteMasterItem('${item.item_code}')">Delete</button></td>
+                `;
+            });
+        }
+
+        function renderItemList() {
+            const visibleRows = Math.ceil(itemListContainer.clientHeight / ROW_HEIGHT) + 5;
+            const totalHeight = filteredItems.length * ROW_HEIGHT;
+            itemListTableBody.style.height = `${totalHeight}px`;
+            const renderVisibleItems = () => {
+                const scrollTop = itemListContainer.scrollTop;
+                const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2);
+                const endIndex = Math.min(filteredItems.length, startIndex + visibleRows);
+                const fragment = document.createDocumentFragment();
+                for (let i = startIndex; i < endIndex; i++) {
+                    const item = filteredItems[i];
+                    const row = document.createElement('tr');
+                    row.className = 'item-row';
+                    row.style.position = 'absolute';
+                    row.style.top = `${i * ROW_HEIGHT}px`;
+                    row.style.width = '100%';
+                    row.innerHTML = `
+                        <td><input type="checkbox" data-index="${i}"></td>
+                        <td>${item.item_code}</td>
+                        <td>${item.barcode || ''}</td>
+                        <td>${item.item_name}</td>
+                        <td><a href="#" onclick="editItem('${item.item_code}')">Edit</a></td>
+                    `;
+                    fragment.appendChild(row);
+                }
+                itemListTableBody.innerHTML = '';
+                itemListTableBody.appendChild(fragment);
+            };
+            itemListContainer.addEventListener('scroll', () => {
+                window.requestAnimationFrame(renderVisibleItems);
+            });
+            itemListSearchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                if (searchTerm) {
+                    filteredItems = itemMaster.filter(item =>
+                        item.item_code.toLowerCase().includes(searchTerm) ||
+                        (item.barcode && item.barcode.toLowerCase().includes(searchTerm)) ||
+                        item.item_name.toLowerCase().includes(searchTerm)
+                    );
+                } else {
+                    filteredItems = [...itemMaster];
+                }
+                itemListTableBody.style.height = `${filteredItems.length * ROW_HEIGHT}px`;
+                itemListContainer.scrollTop = 0;
+                renderVisibleItems();
+            });
+            renderVisibleItems();
+        }
+
+        function renderStockCount() {
+            stockCountTableHead.innerHTML = '';
+            stockCountTableBody.innerHTML = '';
+            saveChangesButton.style.display = 'none';
+            undoButton.style.display = 'none';
+            const locations = [...new Set(inventoryAudit.map(item => item.location))];
+            const headerRow = stockCountTableHead.insertRow();
+            const staticHeaders = ["USER NAME", "CATEGORY", "ITEM CODE", "BARCODE", "ITEM NAME", "ACTIONS"];
+            staticHeaders.forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            locations.forEach(loc => {
+                const th = document.createElement('th');
+                th.textContent = loc.toUpperCase();
+                headerRow.appendChild(th);
+            });
+            const totalTh = document.createElement('th');
+            totalTh.textContent = 'TOTAL';
+            headerRow.appendChild(totalTh);
+            const consolidatedData = {};
+            inventoryAudit.forEach(item => {
+                const key = `${item.user_name}_${item.category}_${item.item_code}`;
+                if (!consolidatedData[key]) {
+                    consolidatedData[key] = {
+                        user_name: item.user_name,
+                        category: item.category,
+                        item_code: item.item_code,
+                        barcode: item.barcode,
+                        item_name: item.item_name,
+                        locations: {},
+                        total: 0
+                    };
+                }
+                consolidatedData[key].locations[item.location] = parseInt(item.actual_quantity);
+                consolidatedData[key].total += parseInt(item.actual_quantity);
+            });
+            Object.values(consolidatedData).forEach(row => {
+                const tr = stockCountTableBody.insertRow();
+                tr.innerHTML = `
+                    <td>${row.user_name}</td>
+                    <td>${row.category}</td>
+                    <td>${row.item_code}</td>
+                    <td>${row.barcode || ''}</td>
+                    <td>${row.item_name}</td>
+                `;
+                const actionsTd = document.createElement('td');
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit Details';
+                editButton.onclick = () => editStockCount(row.item_code, row.user_name, row.category);
+                actionsTd.appendChild(editButton);
+                tr.appendChild(actionsTd);
+                locations.forEach(loc => {
+                    const td = document.createElement('td');
+                    td.textContent = row.locations[loc] !== undefined ? row.locations[loc] : '';
+                    td.classList.add('editable');
+                    td.dataset.itemCode = row.item_code;
+                    td.dataset.location = loc;
+                    tr.appendChild(td);
+                });
+                const totalTd = document.createElement('td');
+                totalTd.textContent = row.total;
+                tr.appendChild(totalTd);
+            });
+            document.querySelectorAll('#stock-count-table tbody td.editable').forEach(cell => {
+                cell.addEventListener('dblclick', (e) => {
+                    const originalValue = e.target.textContent;
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = originalValue;
+                    input.min = "0";
+                    e.target.textContent = '';
+                    e.target.appendChild(input);
+                    input.focus();
+                    input.addEventListener('blur', async () => {
+                        let newValue = parseInt(input.value);
+                        if (isNaN(newValue) || newValue < 0) newValue = 0;
+                        e.target.textContent = newValue;
+                        e.target.dataset.newValue = newValue;
+                        saveChangesButton.style.display = 'inline-block';
+                        undoButton.style.display = 'inline-block';
+                        updateRowTotal(e.target);
+                    });
+                });
+            });
+        }
+
+        function updateRowTotal(cell) {
+            const row = cell.closest('tr');
+            const locations = [...new Set(inventoryAudit.map(item => item.location))];
+            let total = 0;
+            let locationIndexOffset = 6;
+            for (let i = 0; i < locations.length; i++) {
+                const locationCell = row.cells[locationIndexOffset + i];
+                const value = parseInt(locationCell.textContent);
+                if (!isNaN(value)) total += value;
+            }
+            const totalCell = row.querySelector('td:last-child');
+            totalCell.textContent = total;
+        }
+
+        saveChangesButton.addEventListener('click', async () => {
+            const editedCells = document.querySelectorAll('#stock-count-table td[data-new-value]');
+            if (editedCells.length === 0) {
+                alert('No changes to save.');
+                return;
+            }
+            originalInventoryAudit = JSON.parse(JSON.stringify(inventoryAudit));
+            try {
+                for (const cell of editedCells) {
+                    const item_code = cell.dataset.itemCode;
+                    const location = cell.dataset.location;
+                    const newValue = parseInt(cell.dataset.newValue);
+                    const auditItem = inventoryAudit.find(item => item.item_code === item_code && item.location === location);
+                    if (auditItem) {
+                        await updateData('audit/' + auditItem.id, { actual_quantity: newValue });
+                    } else {
+                        const originalItem = itemMaster.find(item => item.item_code === item_code);
+                        if (originalItem) {
+                            await postData('audit', {
+                                user_name: 'N/A',
+                                location: location,
+                                category: originalItem.category || 'N/A',
+                                item_code: item_code,
+                                barcode: originalItem.barcode,
+                                item_name: originalItem.item_name,
+                                actual_quantity: newValue
+                            });
+                        }
+                    }
+                }
+                navigate('stock-count');
+                alert('Changes saved successfully!');
+            } catch (error) {
+                console.error("Failed to save changes:", error);
+                alert("Failed to save changes. Please try again.");
+            } finally {
+                editedCells.forEach(cell => cell.removeAttribute('data-new-value'));
+            }
+        });
+
+        undoButton.addEventListener('click', () => {
+            if (originalInventoryAudit) {
+                inventoryAudit = originalInventoryAudit;
+                renderStockCount();
+                alert('Changes undone.');
+            }
+        });
+
+        window.editStockCount = (itemCode, userName, category) => {
+            currentModalData = inventoryAudit.filter(item => 
+                item.item_code === itemCode && 
+                item.user_name === userName && 
+                item.category === category
+            );
+            
+            if (currentModalData.length > 0) {
+                modalBody.innerHTML = '';
+                modalItemName.textContent = `Edit Details for: ${currentModalData[0].item_name} (${currentModalData[0].item_code})`;
+                currentModalData.forEach(item => {
+                    const formGroup = document.createElement('div');
+                    formGroup.className = 'form-group';
+                    formGroup.innerHTML = `
+                        <label for="quantity-${item.id}">Location: ${item.location}</label>
+                        <input type="number" id="quantity-${item.id}" value="${item.actual_quantity}" min="0" data-id="${item.id}">
+                    `;
+                    modalBody.appendChild(formGroup);
+                });
+                editModal.style.display = 'block';
+            } else {
+                alert('No stock count data found for this item.');
+            }
+        };
+
+        async function saveModalChanges() {
+            const changes = {};
+            const inputs = modalBody.querySelectorAll('input[type="number"]');
+            let hasError = false;
+
+            inputs.forEach(input => {
+                const id = input.dataset.id;
+                const newQuantity = parseInt(input.value);
+                if (isNaN(newQuantity) || newQuantity < 0) {
+                    hasError = true;
+                }
+                changes[id] = newQuantity;
+            });
+
+            if (hasError) {
+                alert('Invalid quantity entered. Please enter a positive number.');
+                return;
+            }
+
+            try {
+                for (const auditId in changes) {
+                    await updateData('audit/' + auditId, { actual_quantity: changes[auditId] });
+                }
+                alert('Quantities updated successfully!');
+                closeModal();
+                navigate('stock-count');
+            } catch (error) {
+                console.error("Failed to save modal changes:", error);
+                alert("Failed to save changes. Please try again.");
+            }
+        }
+
+        function closeModal() {
+            editModal.style.display = 'none';
+        }
+
+        closeModalButton.addEventListener('click', closeModal);
+        cancelModalButton.addEventListener('click', closeModal);
+        saveModalButton.addEventListener('click', saveModalChanges);
+        deleteAllCountsButton.addEventListener('click', deleteStockCount);
+
+        window.onclick = function(event) {
+            if (event.target == editModal) {
+                closeModal();
+            }
+        };
+
+        async function deleteStockCount() {
+            if (confirm("Are you sure you want to delete all stock count records? This action cannot be undone.")) {
+                try {
+                    await deleteDataAll('audit');
+                    inventoryAudit = []; // Clear local data
+                    renderStockCount(); // Rerender the table from the empty array
+                    alert("All stock counts have been deleted.");
+                } catch (error) {
+                    console.error("Failed to delete stock counts:", error);
+                    alert("Failed to delete stock counts. Please try again.");
+                }
+            }
+        }
+
+        function renderLocationList() {
+            locationTableBody.innerHTML = '';
+            locationMaster.forEach((location) => {
+                const row = locationTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${location.name}</td>
+                    <td><button onclick="deleteLocation(${location.id})">Delete</button></td>
+                `;
+            });
+        }
+
+        function renderUserList() {
+            userTableBody.innerHTML = '';
+            users.forEach((user) => {
+                const row = userTableBody.insertRow();
+                const roleCell = document.createElement('td');
+                const roleDropdown = document.createElement('select');
+                const adminOption = document.createElement('option');
+                adminOption.value = 'Admin';
+                adminOption.textContent = 'Admin';
+                const staffOption = document.createElement('option');
+                staffOption.value = 'Staff';
+                staffOption.textContent = 'Staff';
+                roleDropdown.appendChild(adminOption);
+                roleDropdown.appendChild(staffOption);
+                roleDropdown.value = user.role;
+                roleDropdown.addEventListener('change', async (e) => {
+                    try {
+                        await updateData('users/' + user.id, { role: e.target.value });
+                    } catch (error) {
+                        console.error("Failed to update user role:", error);
+                        alert("Failed to update user role. Please try again.");
+                    }
+                });
+                roleCell.appendChild(roleDropdown);
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td></td>
+                    <td><button onclick="deleteUser(${user.id})">Delete</button></td>
+                `;
+                row.cells[1].appendChild(roleDropdown);
+            });
+        }
+
+        function renderUserDropdown() {
+            stockUserDropdown.innerHTML = '';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                option.textContent = user.username;
+                stockUserDropdown.appendChild(option);
+            });
+        }
+
+        function renderLocationDropdown() {
+            stockLocationDropdown.innerHTML = '';
+            locationMaster.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc.name;
+                option.textContent = loc.name;
+                stockLocationDropdown.appendChild(option);
+            });
+        }
+
+        function renderDashboard() {
+            let totalItems = 0;
+            let correctCount = 0;
+            let lessCount = 0;
+            let excessCount = 0;
+            inventoryAudit.forEach(item => totalItems += parseInt(item.actual_quantity));
+            const uniqueProducts = new Set(inventoryAudit.map(item => item.item_code)).size;
+            document.getElementById('total-items').textContent = totalItems;
+            document.getElementById('unique-products').textContent = uniqueProducts;
+            document.getElementById('correct-count').textContent = correctCount;
+            document.getElementById('less-count').textContent = lessCount;
+            document.getElementById('excess-count').textContent = excessCount;
+            document.getElementById('accuracy-percentage').textContent = `N/A`;
+        }
+
+        window.deleteMasterItem = async (item_code) => {
+            if (confirm(`Are you sure you want to delete item with code ${item_code}?`)) {
+                try {
+                    await deleteData('items', encodeURIComponent(item_code));
+                    navigate('item-master');
+                } catch (error) {
+                    console.error("Failed to delete item:", error);
+                    alert("Failed to delete item. Please try again.");
+                }
+            }
+        };
+
+        window.deleteLocation = async (id) => {
+            if (confirm(`Are you sure you want to delete this location?`)) {
+                try {
+                    await deleteData('locations', id);
+                    navigate('location-master');
+                } catch (error) {
+                    console.error("Failed to delete location:", error);
+                    alert("Failed to delete location. Please try again.");
+                }
+            }
+        };
+
+        window.deleteUser = async (id) => {
+            if (users.length === 1) {
+                alert('Cannot delete the only user!');
+                return;
+            }
+            if (confirm('Are you sure you want to delete this user?')) {
+                try {
+                    await deleteData('users', id);
+                    navigate('user-management');
+                } catch (error) {
+                    console.error("Failed to delete user:", error);
+                    alert("Failed to delete user. Please try again.");
+                }
+            }
+        };
+
+        window.editItem = async (item_code) => {
+            try {
+                itemMaster = await fetchData('items');
+                const item = itemMaster.find(item => item.item_code === item_code);
+                if (item) {
+                    document.getElementById('master-item-code').value = item.item_code;
+                    document.getElementById('master-barcode').value = item.barcode || '';
+                    document.getElementById('master-item-name').value = item.item_name;
+                    navigate('item-master');
+                }
+            } catch (error) {
+                console.error("Failed to edit item:", error);
+                alert("Failed to load item data for editing.");
+            }
+        };
+
+        async function checkAuthentication() {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                navigate('dashboard');
+            } else {
+                navigate('login');
+            }
+            renderNav();
+        }
+
+        checkAuthentication();
+    });
+</script>
+</body>
+</html>
